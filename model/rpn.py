@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torchvision.ops import nms # Standard Allowed Op
-from anchor import AnchorGenerator
+from model.anchor import AnchorGenerator
 
 class RPN(nn.Module):
     def __init__(self, in_channels=2048, mid_channels=512, n_anchors=9):

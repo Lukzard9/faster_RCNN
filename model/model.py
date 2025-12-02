@@ -1,9 +1,8 @@
-import torch
 import torch.nn as nn
-from backbone import ResNetBackbone
-from rpn import RPN
-from roi_layer import RoIAlignLayer
-from detector import DetectorHead
+from model.backbone import ResNetBackbone
+from model.rpn import RPN
+from model.roi_layer import RoIAlignLayer
+from model.detector import DetectorHead
 
 class FasterRCNN(nn.Module):
     def __init__(self, num_classes):

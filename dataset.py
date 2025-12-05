@@ -1,20 +1,23 @@
 import torch
-import os
+import torch.utils.data
 from pathlib import Path
 from PIL import Image
 from torchvision import transforms
 import metrics 
 
 class RecursiveDetDataset(torch.utils.data.Dataset):
-    def __init__(self, root_dir, split="Train", transform=None):
+    def __init__(self, root_dir, split="Train", transform=None, require_labels=True):
         """
         Args:
             root_dir (str): Path to the root dataset folder.
             split (str): "Train", "Val", or "Test".
             transform (callable, optional): Transform to be applied on the image.
+            require_labels (bool): If True, skips images without corresponding .txt files.
+                                   Set False for the final TEST set generation.
         """
         self.root = Path(root_dir)
         self.split = split
+        self.require_labels = require_labels
         self.img_width = 640
         self.img_height = 480
         
@@ -22,15 +25,14 @@ class RecursiveDetDataset(torch.utils.data.Dataset):
         self.groups = ['G1', 'G2', 'G3']
         
         # List to store (image_path, label_path) tuples
+        # label_path will be None if require_labels=False and no label is found
         self.samples = []
         self._load_samples()
 
-        # Define default transform for ResNet50 if none is provided
         if transform is None:
             self.transform = transforms.Compose([
                 transforms.Resize((self.img_height, self.img_width)),
                 transforms.ToTensor(),
-                # Standard ImageNet normalization required for pre-trained ResNet
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], 
                                      std=[0.229, 0.224, 0.225])
             ])
@@ -38,7 +40,6 @@ class RecursiveDetDataset(torch.utils.data.Dataset):
             self.transform = transform
 
     def _load_samples(self):
-        """Recursively loads images and matches them with labels."""
         img_root = self.root / self.split / "IMAGES"
         lbl_root = self.root / self.split / "LABELS"
 
@@ -49,16 +50,18 @@ class RecursiveDetDataset(torch.utils.data.Dataset):
             if not img_group_path.exists():
                 continue
 
-            # Sort to ensure alignment
+            # Sort to ensure consistent order
             img_files = sorted(list(img_group_path.glob("*.jpg")) + list(img_group_path.glob("*.png")))
             
             for img_path in img_files:
-                # Construct corresponding label path (change extension to .txt)
                 lbl_name = img_path.stem + ".txt"
                 lbl_path = lbl_group_path / lbl_name
                 
                 if lbl_path.exists():
                     self.samples.append((str(img_path), str(lbl_path)))
+                elif not self.require_labels:
+                    # Keep image even if label is missing (for TEST inference)
+                    self.samples.append((str(img_path), None))
 
     def __len__(self):
         return len(self.samples)
@@ -69,35 +72,26 @@ class RecursiveDetDataset(torch.utils.data.Dataset):
         # 1. Load Image
         image = Image.open(img_path).convert("RGB")
         
-        # 2. Read Labels using YOUR metrics.py function
-        # Returns list of (cls, x, y, w, h) normalized
-        raw_boxes = metrics.read_yolo_boxes(lbl_path, has_conf=False)
-
         boxes = []
         labels = []
 
-        for item in raw_boxes:
-            cls_id, x_c, y_c, w, h = item
-            
-            # 3. Convert Normalized Center (YOLO) -> Normalized Corners
-            # Using YOUR metrics.py function
-            x_min_n, y_min_n, x_max_n, y_max_n = metrics.xywh_to_xyxy(x_c, y_c, w, h)
+        # 2. Read Labels (if they exist)
+        if lbl_path is not None:
+            raw_boxes = metrics.read_yolo_boxes(lbl_path, has_conf=False)
 
-            # 4. Denormalize: Scale to Absolute Pixel Coordinates
-            # Faster R-CNN expects: [x1, y1, x2, y2] in pixels
-            x_min = x_min_n * self.img_width
-            y_min = y_min_n * self.img_height
-            x_max = x_max_n * self.img_width
-            y_max = y_max_n * self.img_height
+            for item in raw_boxes:
+                cls_id, x_c, y_c, w, h = item
+                x_min_n, y_min_n, x_max_n, y_max_n = metrics.xywh_to_xyxy(x_c, y_c, w, h)
 
-            boxes.append([x_min, y_min, x_max, y_max])
-            
-            # IMPORTANT: Faster R-CNN reserves class 0 for background.
-            # If your dataset classes are 0-indexed (0, 1, 2...), 
-            # we typically add 1 so the model treats 0 as background.
-            labels.append(int(cls_id) + 1)
+                x_min = x_min_n * self.img_width
+                y_min = y_min_n * self.img_height
+                x_max = x_max_n * self.img_width
+                y_max = y_max_n * self.img_height
 
-        # Handle images with no objects (background only)
+                boxes.append([x_min, y_min, x_max, y_max])
+                labels.append(int(cls_id) + 1)
+
+        # 3. Handle No Labels / Empty Labels
         if len(boxes) == 0:
             boxes = torch.zeros((0, 4), dtype=torch.float32)
             labels = torch.zeros((0,), dtype=torch.int64)
@@ -105,21 +99,15 @@ class RecursiveDetDataset(torch.utils.data.Dataset):
             boxes = torch.as_tensor(boxes, dtype=torch.float32)
             labels = torch.as_tensor(labels, dtype=torch.int64)
 
-        # 5. Wrap in target dictionary
         target = {}
         target["boxes"] = boxes
         target["labels"] = labels
         target["image_id"] = torch.tensor([idx])
         
-        # Apply Transforms to Image
         if self.transform:
             image = self.transform(image)
 
         return image, target
 
 def custom_collate_fn(batch):
-    """
-    Standard PyTorch collate fails because different images have 
-    different numbers of bounding boxes.
-    """
     return tuple(zip(*batch))

@@ -14,7 +14,7 @@ class FasterRCNN(nn.Module):
         super(FasterRCNN, self).__init__()
         
         # 1. Backbone (ResNet50)
-        self.backbone = ResNetBackbone(pretrained=True, freeze_params=True)
+        self.backbone = ResNetBackbone(pretrained=True, freeze_params=False)
         
         # 2. RPN (Region Proposal Network)
         # Input: 2048 channels from ResNet

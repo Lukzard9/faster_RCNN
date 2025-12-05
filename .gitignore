@@ -5,3 +5,8 @@
 /.idea/modules.xml
 /.idea/inspectionProfiles/profiles_settings.xml
 /.idea/vcs.xml
+/temp_val_preds/
+/__pycache__/
+/model/__pycache__
+/checkpoints/
+/final_test_predictions/

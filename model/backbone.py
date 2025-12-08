@@ -11,12 +11,21 @@ class ResNetBackbone(nn.Module):
         weights = models.ResNet50_Weights.DEFAULT if pretrained else None
         resnet = models.resnet50(weights=weights)
 
-        # 2. Architecture Surgery
-        # ResNet50 ends with:
-        #   - Average Pooling (collapses spatial dims -> 1x1)
-        #   - FC Layer (classification)
-        # We need to REMOVE these two to keep the spatial grid.
         
+        
+        # --- CHANGE 1: Dilation Strategy ---
+        # We replace the stride=2 in layer4 with stride=1 (Dilation)
+        # This keeps the feature map larger.
+        resnet.layer4[0].conv2.stride = (1, 1)
+        resnet.layer4[0].downsample[0].stride = (1, 1)
+        
+        # Use dilation=2 for the 3x3 convs in layer4 to maintain receptive field
+        for m in resnet.layer4.modules():
+            if isinstance(m, nn.Conv2d) and m.kernel_size == (3, 3):
+                m.dilation = (2, 2)
+                m.padding = (2, 2)
+
+        # 2. Architecture Surgery
         # list(resnet.children())[:-2] grabs everything EXCEPT the last 2 layers
         self.features = nn.Sequential(*list(resnet.children())[:-2])
 
@@ -27,7 +36,7 @@ class ResNetBackbone(nn.Module):
         
         # 4. Define Stride
         # ResNet50 reduces dimensions by factor of 32 (Input 640 -> Feat 20)
-        self.stride = 32
+        self.stride = 16
 
         # 5. Optional: Freeze Weights
         # Common in exams: "Freeze the backbone so we only train the detector heads"

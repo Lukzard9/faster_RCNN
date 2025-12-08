@@ -48,7 +48,7 @@ class DetectorHead(nn.Module):
                 continue
             
             # NMS removes overlapping boxes of the SAME class
-            keep = nms(cls_boxes, cls_probs, iou_threshold=0.4)
+            keep = nms(cls_boxes, cls_probs, iou_threshold=0.3)
             
             valid_boxes = cls_boxes[keep]
             valid_scores = cls_probs[keep]

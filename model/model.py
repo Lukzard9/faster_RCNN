@@ -18,11 +18,11 @@ class FasterRCNN(nn.Module):
         
         # 2. RPN (Region Proposal Network)
         # Input: 2048 channels from ResNet
-        self.rpn = RPN(in_channels=2048, mid_channels=512)
+        self.rpn = RPN(in_channels=2048, mid_channels=512, n_anchors=15)
         
         # 3. RoI Align
         # Maps proposals to fixed 7x7 features
-        self.roi_align = RoIAlignLayer(output_size=(7, 7), spatial_scale=1.0/32)
+        self.roi_align = RoIAlignLayer(output_size=(7, 7), spatial_scale=1.0/16)
         
         # 4. Detector Head (RoI Head)
         # Input: 2048 channels, Output: num_classes

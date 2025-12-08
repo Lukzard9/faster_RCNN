@@ -3,7 +3,7 @@ import torch.nn as nn
 from torchvision.ops import roi_align
 
 class RoIAlignLayer(nn.Module):
-    def __init__(self, output_size=(7, 7), spatial_scale=1.0/32):
+    def __init__(self, output_size=(7, 7), spatial_scale=1.0/16):
         """
         Args:
             output_size (tuple): The fixed resolution (H, W) we want for every object.

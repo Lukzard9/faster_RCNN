@@ -2,7 +2,7 @@ import torch
 import numpy as np
 
 class AnchorGenerator:
-    def __init__(self, stride=32, scales=[32, 64, 128], ratios=[0.5, 1, 2]):
+    def __init__(self, stride=16, scales=[12, 24, 48, 96, 192], ratios=[0.5, 1, 2]):
         self.stride = stride
         self.scales = torch.tensor(scales)
         self.ratios = torch.tensor(ratios)

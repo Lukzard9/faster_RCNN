@@ -79,7 +79,7 @@ def train_one_epoch(model, loader, optimizer, loss_fn, device):
         optimizer.step()
         
         total_loss += loss.item()
-        if batch_idx % 50 == 0:
+        if batch_idx % 20 == 0:
             print(f"  Batch {batch_idx}/{len(loader)} | Loss: {loss.item():.4f}")
 
     return total_loss / len(loader)
@@ -122,7 +122,7 @@ def validate_during_training(model, dataset, device, output_dir, epoch, checkpoi
                 out['bbox_deltas'], 
                 out['proposals'][0], 
                 img_shape,
-                score_thresh=0.3 
+                score_thresh=0.6
             )
             
             # --- INTELLIGENT VISUALIZATION ---
@@ -190,7 +190,7 @@ def generate_test_predictions(model, root_dir, device, output_dir):
             img_shape = img_tensor.shape[-2:]
             
             out = model(img_tensor)
-            results = model.detector.post_process(out['cls_scores'], out['bbox_deltas'], out['proposals'][0], img_shape, score_thresh=0.05) 
+            results = model.detector.post_process(out['cls_scores'], out['bbox_deltas'], out['proposals'][0], img_shape, score_thresh=0.6) 
             
             idx = targets[0]['image_id'].item()
             img_path = Path(test_dataset.samples[idx][0])
@@ -212,7 +212,7 @@ if __name__ == "__main__":
     NUM_CLASSES = 2 
     BATCH_SIZE = 4
     LR = 0.005
-    EPOCHS = 15 # Kept at 15
+    EPOCHS = 20 # Kept at 15
     
     CHECKPOINT_DIR = "checkpoints"
     VAL_PRED_DIR = "temp_val_preds"
@@ -225,6 +225,7 @@ if __name__ == "__main__":
 
     model = FasterRCNN(num_classes=NUM_CLASSES).to(DEVICE)
     optimizer = optim.SGD(model.parameters(), lr=LR, momentum=0.9, weight_decay=0.0005)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[7, 10, 15], gamma=0.1)
     loss_func = FasterRCNNLoss()
 
     print(f"Starting training on {DEVICE}...")
@@ -232,10 +233,13 @@ if __name__ == "__main__":
     for epoch in range(EPOCHS):
         print(f"\n--- Epoch {epoch+1}/{EPOCHS} ---")
         train_loss = train_one_epoch(model, train_loader, optimizer, loss_func, DEVICE)
-        print(f"  Epoch Loss: {train_loss:.4f}")
+        scheduler.step()
+        current_lr = scheduler.get_last_lr()[0]
+        print(f"  Epoch Loss: {train_loss:.4f} | LR: {current_lr:.6f}")
         
-        save_path = os.path.join(CHECKPOINT_DIR, f"faster_rcnn_epoch_{epoch+1}.pth")
-        torch.save(model.state_dict(), save_path)
+        if epoch % 2 == 0:
+            save_path = os.path.join(CHECKPOINT_DIR, f"faster_rcnn_epoch_{epoch+1}.pth")
+            torch.save(model.state_dict(), save_path)
         
         validate_during_training(model, val_dataset, DEVICE, VAL_PRED_DIR, epoch+1, CHECKPOINT_DIR, loss_func)
         

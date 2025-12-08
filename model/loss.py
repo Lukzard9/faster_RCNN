@@ -104,7 +104,7 @@ class FasterRCNNLoss(nn.Module):
         labels[max_iou < 0.3] = 0
         
         # Positive: IoU > 0.7 OR the anchor with highest IoU for a GT
-        labels[max_iou > 0.7] = 1
+        labels[max_iou > 0.5] = 1
         
         # Ensure every GT has at least one anchor
         gt_max_iou, gt_argmax_iou = ious.max(dim=0)

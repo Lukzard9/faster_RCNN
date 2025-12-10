@@ -21,10 +21,7 @@ class DetectorHead(nn.Module):
         bbox_deltas = self.bbox_pred(x)
         return scores, bbox_deltas
 
-    def post_process(self, scores, bbox_deltas, proposals, img_shape, score_thresh=0.5):
-        """
-        Added score_thresh argument (default 0.5) to clean up low-confidence predictions.
-        """
+    def post_process(self, scores, bbox_deltas, proposals, img_shape, score_thresh=0.5, iou_threshold=0.5):
         probs = F.softmax(scores, dim=1)
         pred_boxes = self._apply_deltas_to_proposals(proposals, bbox_deltas)
         
@@ -34,12 +31,11 @@ class DetectorHead(nn.Module):
         final_results = []
         num_classes = scores.shape[1]
         
-        for class_id in range(1, num_classes):
+        for class_id in range(1, num_classes): # skip 0
             cls_probs = probs[:, class_id]
             box_idx = class_id * 4
             cls_boxes = pred_boxes[:, box_idx : box_idx + 4]
             
-            # Use the passed threshold
             mask = cls_probs > score_thresh
             cls_boxes = cls_boxes[mask]
             cls_probs = cls_probs[mask]
@@ -47,8 +43,7 @@ class DetectorHead(nn.Module):
             if len(cls_boxes) == 0:
                 continue
             
-            # NMS removes overlapping boxes of the SAME class
-            keep = nms(cls_boxes, cls_probs, iou_threshold=0.3)
+            keep = nms(cls_boxes, cls_probs, iou_threshold)
             
             valid_boxes = cls_boxes[keep]
             valid_scores = cls_probs[keep]

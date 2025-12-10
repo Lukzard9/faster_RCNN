@@ -9,8 +9,8 @@ class ResNetBackbone(nn.Module):
         weights = models.ResNet50_Weights.DEFAULT if pretrained else None
         resnet = models.resnet50(weights=weights)
 
-        # Stride 1 (640×480) --> (20×15)
-        # Stride 2 (640×480) --> (40×30)
+        # Stride 2 (640×480) --> (20×15)
+        # Stride 1 (640×480) --> (40×30)
         resnet.layer4[0].conv2.stride = (1, 1)
         resnet.layer4[0].downsample[0].stride = (1, 1)
         
@@ -18,7 +18,6 @@ class ResNetBackbone(nn.Module):
             if isinstance(m, nn.Conv2d) and m.kernel_size == (3, 3):
                 m.dilation = (2, 2)
                 m.padding = (2, 2)
-
 
         self.features = nn.Sequential(*list(resnet.children())[:-2])
 

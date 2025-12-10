@@ -80,7 +80,7 @@ class RPN(nn.Module):
             top_k_scores, top_k_indices = torch.topk(scores, k)
             top_k_boxes = rp_boxes[top_k_indices]
             
-            keep_indices = nms(top_k_boxes, top_k_scores, iou_threshold=0.7)
+            keep_indices = nms(top_k_boxes, top_k_scores, iou_threshold=0.6)
             
             keep_indices = keep_indices[:1000]
             final_proposals = top_k_boxes[keep_indices]

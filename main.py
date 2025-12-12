@@ -273,14 +273,14 @@ def main():
             
             validate_during_training(model, val_dataset, DEVICE, epoch+1, CHECKPOINT_DIR, loss_func)
             
-            if (epoch + 1) % 2 == 0:
-                save_path = os.path.join(CHECKPOINT_DIR, f"faster_rcnn_epoch_{epoch+1}.pth")
-                torch.save({
-                    'epoch': epoch + 1,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'scheduler_state_dict': scheduler.state_dict(),
-                }, save_path)
+            
+            save_path = os.path.join(CHECKPOINT_DIR, f"faster_rcnn_epoch_{epoch+1}.pth")
+            torch.save({
+                'epoch': epoch + 1,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+            }, save_path)
                 
         #generate_test_predictions(model, ROOT_DIR, DEVICE, TEST_PRED_DIR)
 

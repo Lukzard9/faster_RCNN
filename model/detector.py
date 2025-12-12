@@ -21,7 +21,7 @@ class DetectorHead(nn.Module):
         bbox_deltas = self.bbox_pred(x)
         return scores, bbox_deltas
 
-    def post_process(self, scores, bbox_deltas, proposals, img_shape, score_thresh=0.5, iou_threshold=0.5):
+    def post_process(self, scores, bbox_deltas, proposals, img_shape, score_thresh=0.5, iou_threshold=0.3):
         probs = F.softmax(scores, dim=1)
         pred_boxes = self._apply_deltas_to_proposals(proposals, bbox_deltas)
         

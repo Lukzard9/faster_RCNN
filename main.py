@@ -185,12 +185,11 @@ def validate_during_training(model, dataset, device, epoch, checkpoint_dir, loss
     avg_miou = total_miou / count if count > 0 else 0.0
     print(f"  [Epoch {epoch}] Val Loss: {avg_val_loss:.4f} | Avg mIoU: {avg_miou:.4f}")
 
-def generate_test_predictions(model, root_dir, device, output_dir):
+def generate_test_predictions(model, root_dir, device):
     print("\n Generating final predictions for TEST Set  ")
     test_dataset = RecursiveDetDataset(root_dir=root_dir, split="TEST", require_labels=False)
     loader = DataLoader(test_dataset, batch_size=1, collate_fn=custom_collate_fn)
     
-    os.makedirs(output_dir, exist_ok=True)
     model.eval()
     with torch.no_grad():
         for i, (images, targets) in enumerate(loader):
@@ -201,18 +200,30 @@ def generate_test_predictions(model, root_dir, device, output_dir):
             results = model.detector.post_process(out['cls_scores'], out['bbox_deltas'], out['proposals'][0], img_shape, score_thresh=0.6) 
             
             idx = targets[0]['image_id'].item()
-            img_path = Path(test_dataset.samples[idx][0])
-            save_name = img_path.stem + ".txt"
             
-            with open(os.path.join(output_dir, save_name), 'w') as f:
+            img_path = Path(test_dataset.samples[idx][0])
+            
+            group_name = img_path.parent.name
+            test_root = img_path.parent.parent.parent
+            
+            label_dir = test_root / "labels" / group_name
+            os.makedirs(label_dir, exist_ok=True)
+            
+            save_name = img_path.stem + ".txt"
+            save_path = label_dir / save_name
+            
+            with open(save_path, 'w') as f:
                 for res in results:
                     cls_id, box, score = res
                     x1, y1, x2, y2 = box.tolist()
                     w_abs, h_abs = x2 - x1, y2 - y1
+                    
                     x_c_n, y_c_n = (x1 + 0.5 * w_abs) / 640.0, (y1 + 0.5 * h_abs) / 480.0
                     w_n, h_n = w_abs / 640.0, h_abs / 480.0
+                    
                     f.write(f"{int(cls_id)} {x_c_n:.6f} {y_c_n:.6f} {w_n:.6f} {h_n:.6f} {score:.6f}\n")
-    print(f"Test predictions complete. Saved to {output_dir}")
+                    
+    print(f"Test predictions complete. Saved at {root_dir}/TEST/labels/")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -228,7 +239,6 @@ def main():
     EPOCHS = 20 
     
     CHECKPOINT_DIR = "checkpoints"
-    TEST_PRED_DIR = "final_test_predictions"
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
     model = FasterRCNN(num_classes=NUM_CLASSES).to(DEVICE)
@@ -281,11 +291,9 @@ def main():
                 'optimizer_state_dict': optimizer.state_dict(),
                 'scheduler_state_dict': scheduler.state_dict(),
             }, save_path)
-                
-        #generate_test_predictions(model, ROOT_DIR, DEVICE, TEST_PRED_DIR)
 
     elif args.mode == "test":
-        generate_test_predictions(model, ROOT_DIR, DEVICE, TEST_PRED_DIR)
+        generate_test_predictions(model, ROOT_DIR, DEVICE)
 
 if __name__ == "__main__":
     main()

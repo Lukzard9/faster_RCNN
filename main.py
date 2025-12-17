@@ -273,7 +273,7 @@ def main():
     if args.mode == "train":
         print(f"Starting training on {DEVICE} from epoch {start_epoch + 1} to {EPOCHS}...")
 
-        train_dataset = RecursiveDetDataset(root_dir=ROOT_DIR, split="Train", require_labels=True)
+        train_dataset = RecursiveDetDataset(root_dir=ROOT_DIR, split="TRAIN", require_labels=True)
         train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=custom_collate_fn)
         val_dataset = RecursiveDetDataset(root_dir=ROOT_DIR, split="VAL", require_labels=True)
 

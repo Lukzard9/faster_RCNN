@@ -7,11 +7,11 @@ import metrics
 
 
 class RecursiveDetDataset(torch.utils.data.Dataset):
-    def __init__(self, root_dir, split="Train", transform=None, require_labels=True):
+    def __init__(self, root_dir, split="TRAIN", transform=None, require_labels=True):
         """
         Args:
             root_dir (str): Path to the root dataset folder.
-            split (str): "Train", "Val", or "Test".
+            split (str): "TRAIN", "VAL", or "TEST".
             transform (callable, optional): Transform to be applied on the image.
             require_labels (bool): If True, skips images without corresponding .txt files.
         """
